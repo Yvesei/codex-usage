@@ -29,12 +29,19 @@ Daily token totals are separate from your plan's usage limits. Availability depe
 ## Requirements
 
 - macOS 12 or later.
-- Xcode Command Line Tools (`xcode-select --install`).
 - A recent [Codex CLI](https://developers.openai.com/codex/cli/) signed in with a ChatGPT account. Run `codex login` in Terminal if needed.
 
 The app finds Codex in common installation paths, including Homebrew, npm, pnpm, and nvm. It uses your existing Codex sign-in; it does not need a separate API key. An API-key-only Codex login is not supported.
 
+## Install
+
+Download `Codex-Usage.dmg` from the [latest release](https://github.com/Yvesei/codex-usage/releases/latest). Open it, drag **Codex Usage** to **Applications**, and launch the app. The download supports Intel and Apple silicon Macs.
+
+The app is not signed with an Apple Developer ID or notarized. macOS may block its first launch; after attempting to open it, you can choose **Open Anyway** in System Settings → Privacy & Security. See [Apple's instructions](https://support.apple.com/en-us/102445) for details.
+
 ## Build and run
+
+Building from source also requires Xcode Command Line Tools (`xcode-select --install`).
 
 Clone the repository, open its directory in Terminal, and run:
 
