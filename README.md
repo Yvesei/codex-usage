@@ -2,6 +2,12 @@
 
 A small native macOS menu bar app for keeping an eye on your Codex usage. See your five-hour and weekly limits, reset times, and daily token activity without leaving your work.
 
+## Preview
+
+Illustration of the menu with example usage.
+
+![Codex Usage menu preview](docs/images/menu-preview.png)
+
 ## Features
 
 - Five-hour and weekly usage remaining, with reset times.
