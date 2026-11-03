@@ -3,8 +3,8 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let reader = CodexUsageReader()
     private let cache = UsageCache()
-    private let dailyReader = DailyTokenReader()
-    private let dailyCache = DailyTokenCache()
+    private let modelReader = ModelAnalyticsReader()
+    private let modelCache = ModelAnalyticsCache()
     private let preferences = UsagePreferences()
     private let alerts = UsageAlerts()
     private let menuBuilder = UsageMenuBuilder()
@@ -16,10 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var errorMessage: String?
     private var notificationMessage: String?
     private var cacheWarning: String?
-    private var dailyUsage: DailyTokenUsage?
-    private var dailyError: String?
-    private var dailyCacheWarning: String?
-    private var isDailyRefreshing = false
+    private var modelUsage: ModelAnalyticsSnapshot?
+    private var modelError: String?
+    private var isModelRefreshing = false
     private var refreshTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -32,9 +31,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             cacheWarning = "Saved reading · checking the current account"
         }
 
-        if let saved = dailyCache.load() {
-            dailyUsage = saved
-            dailyCacheWarning = "Saved token activity · checking the current account"
+        if let identity = modelReader.currentIdentity() {
+            modelUsage = modelCache.load(for: identity)
+        }
+        if modelUsage == nil {
+            modelCache.clear()
         }
 
         NSWorkspace.shared.notificationCenter.addObserver(
@@ -78,22 +79,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reader.onAccountRead = { [weak self] email in
             self?.checkSavedAccount(email)
         }
-        dailyReader.onAccountRead = { [weak self] email in
-            self?.checkDailyAccount(email)
-        }
-    }
-
-    private func checkDailyAccount(_ email: String?) {
-        guard let savedEmail = dailyUsage?.accountEmail else {
-            return
-        }
-        guard let email, email.caseInsensitiveCompare(savedEmail) == .orderedSame else {
-            dailyUsage = nil
-            dailyCacheWarning = nil
-            dailyCache.clear()
-            render()
-            return
-        }
     }
 
     private func checkSavedAccount(_ email: String?) {
@@ -102,9 +87,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             refreshedAt = nil
             cacheWarning = nil
             cache.clear()
-            dailyUsage = nil
-            dailyCacheWarning = nil
-            dailyCache.clear()
+            modelUsage = nil
+            modelCache.clear()
             render()
             return
         }
@@ -152,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         isRefreshing = true
         errorMessage = nil
-        refreshDailyUsage()
+        refreshModelUsage()
         render()
 
         reader.read { [weak self] result in
@@ -184,44 +168,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func refreshDailyUsage() {
-        guard !isDailyRefreshing else {
+    private func refreshModelUsage() {
+        guard !isModelRefreshing else {
             return
         }
 
-        isDailyRefreshing = true
-        dailyError = nil
-        dailyReader.read { [weak self] result in
-            guard let self else {
+        if let saved = modelUsage {
+            let current = modelReader.currentIdentity()
+            if current?.accountID != saved.accountID || current?.userID != saved.userID {
+                modelUsage = nil
+                modelCache.clear()
+            }
+        }
+
+        isModelRefreshing = true
+        modelError = nil
+        modelReader.read { [weak self] result in
+            DispatchQueue.main.async {
+                self?.handleModelUsage(result)
+            }
+        }
+    }
+
+    private func handleModelUsage(_ result: Result<ModelAnalyticsSnapshot, Error>) {
+        isModelRefreshing = false
+        let identity = modelReader.currentIdentity()
+
+        switch result {
+        case .success(let usage):
+            guard identity?.accountID == usage.accountID, identity?.userID == usage.userID else {
+                modelUsage = nil
+                modelCache.clear()
+                modelError = "Account changed"
+                render()
                 return
             }
-
-            self.isDailyRefreshing = false
-            switch result {
-            case .success(let usage):
-                if let email = usage.accountEmail,
-                   let quotaEmail = self.snapshot?.accountEmail,
-                   email.caseInsensitiveCompare(quotaEmail) != .orderedSame {
-                    self.dailyUsage = nil
-                    self.dailyCache.clear()
-                    self.dailyCacheWarning = nil
-                    self.dailyError = "Account changed. Refresh to update token activity."
-                } else if usage.buckets == nil, self.dailyUsage?.buckets != nil {
-                    self.dailyError = "Daily token activity is unavailable."
-                    self.dailyCacheWarning = "Showing saved token activity"
-                } else {
-                    self.dailyUsage = usage
-                    self.dailyCacheWarning = nil
-                    self.dailyCache.save(usage)
-                }
-            case .failure(let error):
-                self.dailyError = (error as? LocalizedError)?.errorDescription ?? "Couldn't update token activity."
-                if self.dailyUsage != nil {
-                    self.dailyCacheWarning = "Saved token activity · current account not yet verified"
-                }
+            modelUsage = usage
+            modelCache.save(usage)
+        case .failure:
+            if identity?.accountID != modelUsage?.accountID || identity?.userID != modelUsage?.userID {
+                modelUsage = nil
+                modelCache.clear()
             }
-            self.render()
+            modelError = "Could not update model usage"
         }
+        render()
     }
 
     private func message(for error: Error) -> String {
@@ -245,10 +236,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alertsEnabled: preferences.alertsEnabled,
             alertThreshold: preferences.alertThreshold
         )
-        state.dailyUsage = dailyUsage
-        state.dailyError = dailyError
-        state.dailyCacheWarning = dailyCacheWarning
-        state.isDailyRefreshing = isDailyRefreshing
+        state.modelUsage = modelUsage
+        state.modelError = modelError
+        state.isModelRefreshing = isModelRefreshing
         let menu = menuBuilder.makeMenu(for: state)
         if let notificationMessage {
             let item = NSMenuItem(title: notificationMessage, action: nil, keyEquivalent: "")

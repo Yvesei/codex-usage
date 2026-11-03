@@ -8,7 +8,7 @@ final class DailyTokenUsageView: NSView {
         return true
     }
 
-    init(usage: DailyTokenUsage?, isRefreshing: Bool = false) {
+    init(usage: ModelAnalyticsSnapshot?, isRefreshing: Bool = false, now: Date = Date()) {
         super.init(frame: NSRect(x: 0, y: 0, width: 320, height: 1))
 
         stack.orientation = .vertical
@@ -24,18 +24,18 @@ final class DailyTokenUsageView: NSView {
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8)
         ])
 
-        addFullWidth(label("Daily token activity", size: 13, weight: .medium))
+        addFullWidth(label("Daily model usage", size: 13, weight: .medium))
 
-        if let buckets = usage?.buckets {
-            if buckets.isEmpty {
-                addMessage("No daily token activity reported")
-            } else {
-                let chart = DailyTokenChartView(buckets: buckets)
-                chart.heightAnchor.constraint(equalToConstant: 112).isActive = true
-                addFullWidth(chart)
+        if let usage {
+            let daysByDate = Dictionary(usage.days.map { ($0.date, $0) }, uniquingKeysWith: { _, last in last })
+            let days = AnalyticsDateRange(endingAt: now).dates.map { date in
+                daysByDate[date] ?? ModelUsageDay(date: date, models: nil)
             }
+            let chart = ModelUsageChartView(days: days, unit: usage.unit)
+            chart.heightAnchor.constraint(equalToConstant: chart.frame.height).isActive = true
+            addFullWidth(chart)
         } else if isRefreshing && usage == nil {
-            addMessage("Loading daily token activity…")
+            addMessage("Loading daily model usage…")
         }
 
         layoutSubtreeIfNeeded()

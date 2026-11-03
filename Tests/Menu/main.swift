@@ -47,39 +47,61 @@ guard let unavailable = menu.items.compactMap({ $0.view as? DailyTokenUsageView 
     fatalError("The daily token activity section is missing.")
 }
 let unavailableLabels = descendants(of: unavailable).compactMap { $0 as? NSTextField }.map { $0.stringValue }
-expect(unavailableLabels.contains("Daily token activity"), "The activity section should remain visible.")
+expect(unavailableLabels.contains("Daily model usage"), "The activity section should remain visible.")
 expect(menu.item(withTitle: "Please refresh") != nil, "Unavailable activity should prompt a refresh.")
 
-var dailyState = state
-let buckets = (1...8).map { day in
-    DailyTokenBucket(startDate: String(format: "2026-11-%02d", day), tokens: Int64(day * 1_000))
+let now = ISO8601DateFormatter().date(from: "2026-11-03T12:00:00Z")!
+let dates = AnalyticsDateRange(endingAt: now).dates
+let modelUsage = ModelAnalyticsSnapshot(
+    accountID: "test-account",
+    userID: "test-user",
+    days: [
+        ModelUsageDay(date: dates[4], models: []),
+        ModelUsageDay(date: dates[5], models: [
+            ModelUsageValue(model: "alpha", value: 2.1234),
+            ModelUsageValue(model: "beta", value: 3.4321)
+        ])
+    ],
+    unit: "Credits",
+    fetchedAt: now
+)
+let modelView = DailyTokenUsageView(usage: modelUsage, now: now)
+guard let chart = descendants(of: modelView).compactMap({ $0 as? ModelUsageChartView }).first else {
+    fatalError("The daily model chart is missing.")
 }
-dailyState.dailyUsage = DailyTokenUsage(accountEmail: nil, buckets: buckets, fetchedAt: Date())
-let dailyMenu = builder.makeMenu(for: dailyState)
-guard let dailyView = dailyMenu.items.compactMap({ $0.view as? DailyTokenUsageView }).first else {
-    fatalError("The daily token activity section is missing.")
-}
-guard let chart = descendants(of: dailyView).compactMap({ $0 as? DailyTokenChartView }).first else {
-    fatalError("The daily token chart is missing.")
-}
-expect(chart.buckets.count == 7, "The chart should show seven reported days.")
-expect(chart.buckets.first?.startDate == "2026-11-02", "The oldest bar should be on the left.")
-expect(chart.buckets.last?.startDate == "2026-11-08", "The newest bar should be on the right.")
-expect(chart.buckets.last?.tokens == 8_000, "The chart should preserve exact token totals.")
-let numberFormatter = NumberFormatter()
-numberFormatter.numberStyle = .decimal
-let expectedTotal = numberFormatter.string(from: 8_000) ?? "8000"
-let lastBarPoint = NSPoint(x: chart.bounds.width * 6.5 / 7, y: 50)
-let tooltip = chart.view(chart, stringForToolTip: 0, point: lastBarPoint, userData: nil)
-expect(tooltip == "8 Nov 2026 · \(expectedTotal) tokens", "Hover details should identify the bar and its exact token count.")
-
-dailyState.dailyUsage = DailyTokenUsage(accountEmail: nil, buckets: [], fetchedAt: Date())
-let emptyMenu = builder.makeMenu(for: dailyState)
-guard let emptyView = emptyMenu.items.compactMap({ $0.view as? DailyTokenUsageView }).first else {
-    fatalError("The daily token activity section is missing.")
-}
-let emptyLabels = descendants(of: emptyView).compactMap { $0 as? NSTextField }.map { $0.stringValue }
-expect(emptyLabels.contains("No daily token activity reported"), "An empty response should be explained.")
+expect(chart.days.map(\.date) == dates, "The chart should show the current seven calendar days in order.")
+expect(chart.days[4].models?.isEmpty == true, "A reported empty day should remain empty.")
+expect(chart.days[6].models == nil, "An unreported today should not be replaced with zero usage.")
+let yesterdayPoint = NSPoint(x: chart.bounds.width * 5.5 / 7, y: 50)
+let tooltip = chart.view(chart, stringForToolTip: 0, point: yesterdayPoint, userData: nil)
+let formatter = NumberFormatter()
+formatter.numberStyle = .decimal
+formatter.maximumFractionDigits = 2
+let expectedTotal = formatter.string(from: 5.5555)!
+let expectedAlpha = formatter.string(from: 2.1234)!
+let expectedBeta = formatter.string(from: 3.4321)!
+expect(tooltip.contains("\(expectedTotal) credits"), "The combined total should be rounded to two decimal places.")
+expect(tooltip.contains("alpha: \(expectedAlpha) credits"), "The first model should be rounded to two decimal places.")
+expect(tooltip.contains("beta: \(expectedBeta) credits"), "The second model should be rounded to two decimal places.")
+let selectedDay = ModelUsageDay(date: dates[5], models: [
+    ModelUsageValue(model: "alpha", value: 99),
+    ModelUsageValue(model: "beta", value: 1),
+    ModelUsageValue(model: "tiny", value: 0.5),
+    ModelUsageValue(model: "zero", value: 0)
+])
+expect(chart.legendPercentage(for: "alpha", day: selectedDay) == "99%", "The legend should show the model's share of the hovered day.")
+expect(chart.legendPercentage(for: "beta", day: selectedDay) == nil, "Shares under one percent should stay hidden.")
+expect(chart.legendPercentage(for: "tiny", day: selectedDay) == nil, "Tiny shares should stay hidden.")
+expect(chart.legendPercentage(for: "zero", day: selectedDay) == nil, "Zero usage should stay hidden.")
+let thresholdDay = ModelUsageDay(date: dates[5], models: [
+    ModelUsageValue(model: "alpha", value: 99),
+    ModelUsageValue(model: "beta", value: 1)
+])
+expect(chart.legendPercentage(for: "beta", day: thresholdDay) == "1%", "A one percent share should be shown.")
+expect(chart.legendPercentage(for: "alpha", day: nil) == nil, "The legend should show only names when no day is hovered.")
+let todayPoint = NSPoint(x: chart.bounds.width * 6.5 / 7, y: 50)
+let missingTooltip = chart.view(chart, stringForToolTip: 0, point: todayPoint, userData: nil)
+expect(missingTooltip.contains("No data reported"), "Missing today should be described as unavailable.")
 
 guard let settings = menu.item(withTitle: "Settings")?.submenu else {
     fatalError("The settings submenu is missing.")
@@ -105,11 +127,9 @@ expect(failedMenu.item(withTitle: "Couldn't update usage.") == nil, "Detailed er
 expect(failedMenu.item(withTitle: "Saved reading") == nil, "Cache warnings should not appear in the menu.")
 
 var multipleFailures = failed
-multipleFailures.dailyError = "A very long daily activity error."
-multipleFailures.dailyCacheWarning = "A very long saved activity warning."
+multipleFailures.modelError = "A very long daily activity error."
 let multipleFailuresMenu = builder.makeMenu(for: multipleFailures)
 expect(multipleFailuresMenu.items.filter { $0.title == "Please refresh" }.count == 1, "Multiple failures should share one message.")
 expect(multipleFailuresMenu.item(withTitle: "A very long daily activity error.") == nil, "Daily errors should not appear in the menu.")
-expect(multipleFailuresMenu.item(withTitle: "A very long saved activity warning.") == nil, "Daily cache warnings should not appear in the menu.")
 
 print("Native menu checks passed.")

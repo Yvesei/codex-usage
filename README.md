@@ -19,12 +19,12 @@
 ## Features
 
 - Five-hour and weekly usage remaining, with reset times.
-- A daily token activity chart for up to seven reported dates. Hover over a bar for its exact count.
+- A stacked daily model-usage chart covering today and the previous six dates. Hover over a bar for its model breakdown.
 - Additional limits, model names, and reset credits when Codex reports them.
 - Optional notifications at 10% or 5% remaining.
 - Automatic refresh every two minutes and after waking your Mac. The last successful reading stays visible while refreshing or if a request fails.
 
-Daily token totals are separate from your plan's usage limits. Availability depends on what your Codex account and CLI version report; model names on additional limit buckets are not a per-model token breakdown.
+The chart uses the same account-level model analytics as the ChatGPT usage page. It shows relative usage or credits when reported, rather than per-model token counts. Dates use UTC reporting buckets, and missing data is shown as unavailable.
 
 ## Requirements
 
@@ -60,11 +60,11 @@ On first launch, macOS asks for notification permission. Alerts are optional and
 
 ## How it works and privacy
 
-The app starts the local Codex app server and requests account information, rate limits, and daily usage. Codex handles authentication; this app does not read or store your access tokens.
+The app starts the local Codex app server to request account information and rate limits. For the model chart, it reads the existing Codex file-based ChatGPT login and sends its access token directly to ChatGPT's analytics endpoint over HTTPS. It does not save the token or read browser cookies. The chart requires a file-based Codex login; keychain-only and API-key logins aren't supported for model analytics.
 
-The latest reported usage, daily token activity, and account identifiers are stored locally in macOS preferences for display on the next launch. Cached data can remain visible when a refresh fails. The app checks account identity when Codex provides it and clears readings when it detects an account change.
+The latest reported limits, model usage, and account identifiers are stored locally in macOS preferences for display on the next launch. Cached data can remain visible when a refresh fails. The app checks account and user identity before reusing model data and clears it when the identity changes.
 
-Daily activity uses the dates returned by Codex. The service does not specify a timezone for these buckets. This app does not calculate costs or derive token counts from quota percentages.
+The analytics endpoint is not a documented public API and can change or become unavailable. This app does not calculate costs or derive token counts from model usage.
 
 The app relies on the Codex app-server interface; changes to Codex or account availability may affect the information it can display. It is an independent project and is not affiliated with OpenAI.
 

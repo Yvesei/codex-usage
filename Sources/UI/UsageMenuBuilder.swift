@@ -9,10 +9,9 @@ struct UsageMenuState {
     let showBothPercentages: Bool
     let alertsEnabled: Bool
     let alertThreshold: Int
-    var dailyUsage: DailyTokenUsage? = nil
-    var dailyError: String? = nil
-    var dailyCacheWarning: String? = nil
-    var isDailyRefreshing = false
+    var modelUsage: ModelAnalyticsSnapshot? = nil
+    var modelError: String? = nil
+    var isModelRefreshing = false
 }
 
 final class UsageMenuBuilder: NSObject {
@@ -40,7 +39,7 @@ final class UsageMenuBuilder: NSObject {
 
         menu.addItem(.separator())
         let dailyItem = NSMenuItem()
-        dailyItem.view = DailyTokenUsageView(usage: state.dailyUsage, isRefreshing: state.isDailyRefreshing)
+        dailyItem.view = DailyTokenUsageView(usage: state.modelUsage, isRefreshing: state.isModelRefreshing)
         menu.addItem(dailyItem)
 
         if state.isRefreshing || needsRefresh(state) {
@@ -156,10 +155,10 @@ final class UsageMenuBuilder: NSObject {
         let usageNeedsRefresh = !state.isRefreshing && (
             state.errorMessage != nil || state.cacheWarning != nil || state.snapshot == nil
         )
-        let dailyNeedsRefresh = !state.isDailyRefreshing && (
-            state.dailyError != nil || state.dailyCacheWarning != nil || state.dailyUsage?.buckets == nil
+        let modelNeedsRefresh = !state.isModelRefreshing && (
+            state.modelError != nil || state.modelUsage == nil
         )
-        return usageNeedsRefresh || dailyNeedsRefresh
+        return usageNeedsRefresh || modelNeedsRefresh
     }
 
     private func addStatus(_ state: UsageMenuState, to menu: NSMenu) {

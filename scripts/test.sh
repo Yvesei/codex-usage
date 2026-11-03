@@ -22,8 +22,11 @@ swiftc=(xcrun swiftc -module-cache-path "$module_cache")
     Sources/Codex/DailyTokenReader.swift Tests/Daily/main.swift -o "$test_dir/daily-tests"
 "$test_dir/daily-tests" "$PWD/Tests/Daily/fake-codex.sh"
 
-"${swiftc[@]}" -framework AppKit Sources/Models/Usage.swift Sources/Models/DailyTokenUsage.swift \
+"${swiftc[@]}" Sources/Analytics/*.swift Tests/Analytics/main.swift -o "$test_dir/analytics-tests"
+"$test_dir/analytics-tests"
+
+"${swiftc[@]}" -framework AppKit Sources/Models/Usage.swift Sources/Analytics/ModelAnalytics.swift \
     Sources/UI/UsageProgressView.swift Sources/UI/UsageSummaryView.swift \
-    Sources/UI/DailyTokenChartView.swift Sources/UI/DailyTokenUsageView.swift \
+    Sources/UI/ModelUsageChartView.swift Sources/UI/DailyTokenUsageView.swift \
     Sources/UI/UsageMenuBuilder.swift Tests/Menu/main.swift -o "$test_dir/menu-tests"
 "$test_dir/menu-tests"
