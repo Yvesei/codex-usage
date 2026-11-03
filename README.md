@@ -12,11 +12,9 @@
   · <a href="#development">Development</a>
 </p>
 
-## Preview
-
-Illustration of the menu with example usage.
-
-![Codex Usage menu preview](docs/images/menu-preview.png)
+<p align="center">
+  <img src="docs/images/menu-preview.png" alt="Codex Usage menu in dark mode" width="420" />
+</p>
 
 ## Features
 
