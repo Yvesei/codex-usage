@@ -1,6 +1,16 @@
-# Codex Usage
+<p align="center">
+  <img src="Resources/AppIcon.png" alt="Codex Usage logo" width="120" height="120" />
+</p>
 
-A small native macOS menu bar app for keeping an eye on your Codex usage. See your five-hour and weekly limits, reset times, and daily token activity without leaving your work.
+<h1 align="center">Codex Usage</h1>
+
+<p align="center">Codex usage tracker for macOS 12 and later.</p>
+
+<p align="center">
+  <a href="#features">Features</a>
+  · <a href="#build-and-run">Build and run</a>
+  · <a href="#development">Development</a>
+</p>
 
 ## Preview
 
