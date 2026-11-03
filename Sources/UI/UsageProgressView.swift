@@ -30,7 +30,7 @@ final class UsageProgressView: NSView {
         let width = bounds.width * CGFloat(remaining) / 100
         let filled = NSRect(x: 0, y: 0, width: width, height: bounds.height)
         let path = NSBezierPath(roundedRect: filled, xRadius: radius, yRadius: radius)
-        NSColor.systemTeal.setFill()
+        NSColor.systemBlue.setFill()
         path.fill()
     }
 }

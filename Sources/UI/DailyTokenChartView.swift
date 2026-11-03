@@ -101,8 +101,8 @@ final class DailyTokenChartView: NSView, NSViewToolTipOwner {
             let bar = NSRect(x: column.midX - barWidth / 2, y: chartBottom - height, width: barWidth, height: height)
 
             if height > 0 {
-                let opacity: CGFloat = selectedIndex == nil || selectedIndex == index ? 0.9 : 0.45
-                NSColor.controlAccentColor.withAlphaComponent(opacity).setFill()
+                let opacity: CGFloat = selectedIndex == nil || selectedIndex == index ? 1 : 0.45
+                NSColor.systemBlue.withAlphaComponent(opacity).setFill()
                 NSBezierPath(roundedRect: bar, xRadius: 3, yRadius: 3).fill()
             }
 
